@@ -1,3 +1,4 @@
+
 import type { Config } from "tailwindcss";
 
 export default {
@@ -61,6 +62,25 @@ export default {
 					'accent-foreground': 'hsl(var(--sidebar-accent-foreground))',
 					border: 'hsl(var(--sidebar-border))',
 					ring: 'hsl(var(--sidebar-ring))'
+				},
+				// Certificate generator custom colors
+				brand: {
+					50: '#f3f1ff',
+					100: '#ebe5ff',
+					200: '#d9ceff',
+					300: '#bea6ff',
+					400: '#9f75ff',
+					500: '#8347ff',
+					600: '#7122ff',
+					700: '#6410ef',
+					800: '#5710c9',
+					900: '#480ca8',
+					950: '#2e0373',
+				},
+				designer: {
+					canvas: '#f9f9f9',
+					grid: '#eaeaea',
+					handle: '#8347ff',
 				}
 			},
 			borderRadius: {
@@ -84,11 +104,26 @@ export default {
 					to: {
 						height: '0'
 					}
+				},
+				'fade-in': {
+					'0%': {
+						opacity: '0',
+						transform: 'translateY(10px)'
+					},
+					'100%': {
+						opacity: '1',
+						transform: 'translateY(0)'
+					}
 				}
 			},
 			animation: {
 				'accordion-down': 'accordion-down 0.2s ease-out',
-				'accordion-up': 'accordion-up 0.2s ease-out'
+				'accordion-up': 'accordion-up 0.2s ease-out',
+				'fade-in': 'fade-in 0.5s ease-out'
+			},
+			fontFamily: {
+				'playfair': ['"Playfair Display"', 'serif'],
+				'sans': ['Roboto', 'ui-sans-serif', 'system-ui', 'sans-serif']
 			}
 		}
 	},
