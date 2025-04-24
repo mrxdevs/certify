@@ -1,13 +1,16 @@
 
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Menu, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 export function Navigation() {
   const [isOpen, setIsOpen] = useState(false);
-
+  const navigate = useNavigate();
+  
   const toggleMenu = () => setIsOpen(!isOpen);
   
   const menuItems = [
@@ -15,6 +18,16 @@ export function Navigation() {
     { label: "Designer", href: "/designer" },
     { label: "Generate", href: "/generate" },
   ];
+
+  const handleSignOut = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      navigate("/auth");
+    } catch (error: any) {
+      toast.error("Error signing out");
+    }
+  };
 
   return (
     <nav className="bg-white border-b border-gray-100 sticky top-0 z-50">
@@ -40,8 +53,7 @@ export function Navigation() {
           </div>
 
           <div className="hidden sm:ml-6 sm:flex sm:items-center">
-            <Button variant="outline" className="mr-2">Sign In</Button>
-            <Button>Get Started</Button>
+            <Button variant="ghost" onClick={handleSignOut}>Sign Out</Button>
           </div>
 
           <div className="flex items-center sm:hidden">
@@ -67,9 +79,10 @@ export function Navigation() {
               {item.label}
             </Link>
           ))}
-          <div className="px-4 py-3 space-y-2">
-            <Button variant="outline" className="w-full mb-2">Sign In</Button>
-            <Button className="w-full">Get Started</Button>
+          <div className="px-4 py-3">
+            <Button variant="ghost" className="w-full" onClick={handleSignOut}>
+              Sign Out
+            </Button>
           </div>
         </div>
       </div>
