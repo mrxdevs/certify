@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
@@ -14,7 +13,13 @@ import { Separator } from "@/components/ui/separator";
 
 export default function TemplateDesigner() {
   const [templateName, setTemplateName] = useState("Untitled Template");
-  
+  const [draggedComponent, setDraggedComponent] = useState<string | null>(null);
+
+  const handleDragStart = (type: string) => (e: React.DragEvent) => {
+    e.dataTransfer.setData('text/plain', ''); // Required for Firefox
+    setDraggedComponent(type);
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       <Navigation />
@@ -55,14 +60,22 @@ export default function TemplateDesigner() {
                 <p className="text-sm text-muted-foreground">Drag components to the canvas</p>
                 
                 <div className="grid gap-2">
-                  <Card className="cursor-pointer hover:bg-accent transition-colors">
+                  <Card 
+                    className="cursor-move hover:bg-accent transition-colors"
+                    draggable
+                    onDragStart={handleDragStart('text')}
+                  >
                     <CardContent className="p-3 flex items-center">
                       <Type className="h-5 w-5 mr-3 text-brand-600" />
                       <span>Text</span>
                     </CardContent>
                   </Card>
                   
-                  <Card className="cursor-pointer hover:bg-accent transition-colors">
+                  <Card 
+                    className="cursor-move hover:bg-accent transition-colors"
+                    draggable
+                    onDragStart={handleDragStart('image')}
+                  >
                     <CardContent className="p-3 flex items-center">
                       <Image className="h-5 w-5 mr-3 text-brand-600" />
                       <span>Image</span>

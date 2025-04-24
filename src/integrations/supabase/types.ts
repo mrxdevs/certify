@@ -9,7 +9,74 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      [_ in never]: never
+      certificate_templates: {
+        Row: {
+          created_at: string
+          description: string | null
+          height: number
+          id: string
+          name: string
+          updated_at: string
+          width: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          height?: number
+          id?: string
+          name: string
+          updated_at?: string
+          width?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          height?: number
+          id?: string
+          name?: string
+          updated_at?: string
+          width?: number
+        }
+        Relationships: []
+      }
+      template_components: {
+        Row: {
+          content: string | null
+          created_at: string
+          id: string
+          properties: Json
+          template_id: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          properties: Json
+          template_id: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string | null
+          created_at?: string
+          id?: string
+          properties?: Json
+          template_id?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "template_components_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "certificate_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
