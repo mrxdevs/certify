@@ -8,12 +8,13 @@ interface DesignerCanvasProps {
   width?: number;
   height?: number;
   className?: string;
+  templateId?: string;
 }
 
-export function DesignerCanvas({ width = 800, height = 600, className }: DesignerCanvasProps) {
+export function DesignerCanvas({ width = 800, height = 600, className, templateId }: DesignerCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
-  const { components, addComponent, updateComponent, error } = useTemplate();
+  const { components, addComponent, updateComponent, error, isLoading } = useTemplate(templateId);
   const [draggedComponent, setDraggedComponent] = useState<string | null>(null);
 
   useEffect(() => {
@@ -31,7 +32,7 @@ export function DesignerCanvas({ width = 800, height = 600, className }: Designe
     e.preventDefault();
     e.stopPropagation();
 
-    if (!draggedComponent) return;
+    if (!draggedComponent || !templateId) return;
 
     const canvasRect = canvasRef.current?.getBoundingClientRect();
     if (!canvasRect) return;
@@ -42,6 +43,7 @@ export function DesignerCanvas({ width = 800, height = 600, className }: Designe
     addComponent({
       type: draggedComponent as any,
       content: '',
+      template_id: templateId,
       properties: {
         x,
         y,
@@ -57,38 +59,44 @@ export function DesignerCanvas({ width = 800, height = 600, className }: Designe
 
   return (
     <div className="overflow-auto h-full flex items-center justify-center bg-gray-100 p-4">
-      <div 
-        ref={canvasRef}
-        className={cn(
-          "designer-canvas relative border border-gray-200 shadow-md mx-auto transition-all bg-white",
-          className
-        )}
-        style={{ 
-          width: `${width}px`, 
-          height: `${height}px`,
-          transform: `scale(${scale})`,
-          transformOrigin: 'center'
-        }}
-        onDragOver={handleDragOver}
-        onDrop={handleDrop}
-      >
-        {components?.map((component) => (
-          <div
-            key={component.id}
-            className="absolute border border-transparent hover:border-brand-500"
-            style={{
-              left: component.properties.x,
-              top: component.properties.y,
-              width: component.properties.width,
-              height: component.properties.height,
-              transform: `rotate(${component.properties.rotation}deg)`,
-              zIndex: component.properties.zIndex,
-            }}
-          >
-            {component.content || component.type}
-          </div>
-        ))}
-      </div>
+      {isLoading ? (
+        <div className="flex items-center justify-center h-full">
+          <p className="text-muted-foreground">Loading template...</p>
+        </div>
+      ) : (
+        <div 
+          ref={canvasRef}
+          className={cn(
+            "designer-canvas relative border border-gray-200 shadow-md mx-auto transition-all bg-white",
+            className
+          )}
+          style={{ 
+            width: `${width}px`, 
+            height: `${height}px`,
+            transform: `scale(${scale})`,
+            transformOrigin: 'center'
+          }}
+          onDragOver={handleDragOver}
+          onDrop={handleDrop}
+        >
+          {components?.map((component) => (
+            <div
+              key={component.id}
+              className="absolute border border-transparent hover:border-brand-500"
+              style={{
+                left: component.properties.x,
+                top: component.properties.y,
+                width: component.properties.width,
+                height: component.properties.height,
+                transform: `rotate(${component.properties.rotation}deg)`,
+                zIndex: component.properties.zIndex,
+              }}
+            >
+              {component.content || component.type}
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

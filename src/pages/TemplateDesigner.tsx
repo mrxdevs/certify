@@ -1,4 +1,5 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Navigation } from "@/components/Navigation";
 import { Footer } from "@/components/Footer";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -10,10 +11,86 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Save, Image, Type, Square, QrCode, Variable, Layers, Download } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
+import { supabase } from "@/integrations/supabase/client";
+import { useNavigate, useParams } from "react-router-dom";
+import { toast } from "sonner";
 
 export default function TemplateDesigner() {
+  const { id } = useParams();
+  const navigate = useNavigate();
+  const [templateId, setTemplateId] = useState<string | undefined>(id);
   const [templateName, setTemplateName] = useState("Untitled Template");
   const [draggedComponent, setDraggedComponent] = useState<string | null>(null);
+
+  // Create a new template if no ID is provided
+  useEffect(() => {
+    const createTemplate = async () => {
+      if (!id) {
+        try {
+          const { data, error } = await supabase
+            .from('certificate_templates')
+            .insert([
+              { name: templateName }
+            ])
+            .select()
+            .single();
+          
+          if (error) throw error;
+          
+          setTemplateId(data.id);
+          // Update URL without reloading the page
+          navigate(`/designer/${data.id}`, { replace: true });
+        } catch (err) {
+          toast.error('Failed to create template');
+          console.error(err);
+        }
+      }
+    };
+    
+    createTemplate();
+  }, [id, navigate, templateName]);
+
+  // Load template details if ID is provided
+  useEffect(() => {
+    if (id) {
+      const loadTemplateDetails = async () => {
+        try {
+          const { data, error } = await supabase
+            .from('certificate_templates')
+            .select('*')
+            .eq('id', id)
+            .single();
+          
+          if (error) throw error;
+          if (data) {
+            setTemplateName(data.name);
+          }
+        } catch (err) {
+          toast.error('Failed to load template details');
+          console.error(err);
+        }
+      };
+      
+      loadTemplateDetails();
+    }
+  }, [id]);
+
+  const handleUpdateTemplateName = async () => {
+    if (!templateId) return;
+    
+    try {
+      const { error } = await supabase
+        .from('certificate_templates')
+        .update({ name: templateName })
+        .eq('id', templateId);
+      
+      if (error) throw error;
+      toast.success('Template name updated');
+    } catch (err) {
+      toast.error('Failed to update template name');
+      console.error(err);
+    }
+  };
 
   const handleDragStart = (type: string) => (e: React.DragEvent) => {
     e.dataTransfer.setData('text/plain', ''); // Required for Firefox
@@ -31,6 +108,7 @@ export default function TemplateDesigner() {
               <Input
                 value={templateName}
                 onChange={(e) => setTemplateName(e.target.value)}
+                onBlur={handleUpdateTemplateName}
                 className="text-xl font-bold border-none focus-visible:ring-0 p-0 h-auto"
               />
               <p className="text-sm text-muted-foreground">Certificate Template</p>
@@ -40,7 +118,7 @@ export default function TemplateDesigner() {
                 <Download className="mr-2 h-4 w-4" />
                 Export
               </Button>
-              <Button>
+              <Button onClick={handleUpdateTemplateName}>
                 <Save className="mr-2 h-4 w-4" />
                 Save Template
               </Button>
@@ -82,21 +160,33 @@ export default function TemplateDesigner() {
                     </CardContent>
                   </Card>
                   
-                  <Card className="cursor-pointer hover:bg-accent transition-colors">
+                  <Card 
+                    className="cursor-move hover:bg-accent transition-colors"
+                    draggable
+                    onDragStart={handleDragStart('shape')}
+                  >
                     <CardContent className="p-3 flex items-center">
                       <Square className="h-5 w-5 mr-3 text-brand-600" />
                       <span>Shape</span>
                     </CardContent>
                   </Card>
                   
-                  <Card className="cursor-pointer hover:bg-accent transition-colors">
+                  <Card 
+                    className="cursor-move hover:bg-accent transition-colors"
+                    draggable
+                    onDragStart={handleDragStart('variable')}
+                  >
                     <CardContent className="p-3 flex items-center">
                       <Variable className="h-5 w-5 mr-3 text-brand-600" />
                       <span>Variable</span>
                     </CardContent>
                   </Card>
                   
-                  <Card className="cursor-pointer hover:bg-accent transition-colors">
+                  <Card 
+                    className="cursor-move hover:bg-accent transition-colors"
+                    draggable
+                    onDragStart={handleDragStart('qrcode')}
+                  >
                     <CardContent className="p-3 flex items-center">
                       <QrCode className="h-5 w-5 mr-3 text-brand-600" />
                       <span>QR Code</span>
@@ -121,7 +211,7 @@ export default function TemplateDesigner() {
           
           <div className="flex-1 flex flex-col">
             <div className="flex-1 overflow-hidden">
-              <DesignerCanvas />
+              <DesignerCanvas templateId={templateId} />
             </div>
           </div>
           
