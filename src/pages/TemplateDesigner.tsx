@@ -21,6 +21,37 @@ export default function TemplateDesigner() {
   const [templateId, setTemplateId] = useState<string | undefined>(id);
   const [templateName, setTemplateName] = useState("Untitled Template");
   const [draggedComponent, setDraggedComponent] = useState<string | null>(null);
+  const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
+
+  // Check authentication status
+  useEffect(() => {
+    const checkSession = async () => {
+      setIsLoading(true);
+      const { data: { session } } = await supabase.auth.getSession();
+      
+      if (!session) {
+        // Redirect to login page or display authentication message
+        toast.error("Please log in to create templates");
+        // Note: In a real app, you would redirect to a login page
+        // For now we'll show a warning but continue to allow functionality
+      } else {
+        setIsAuthenticated(true);
+      }
+      setIsLoading(false);
+    };
+
+    checkSession();
+
+    // Listen for auth changes
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        setIsAuthenticated(!!session);
+      }
+    );
+
+    return () => subscription.unsubscribe();
+  }, [navigate]);
 
   // Create a new template if no ID is provided
   useEffect(() => {
@@ -40,6 +71,7 @@ export default function TemplateDesigner() {
           setTemplateId(data.id);
           // Update URL without reloading the page
           navigate(`/designer/${data.id}`, { replace: true });
+          toast.success("Template created successfully");
         } catch (err) {
           toast.error('Failed to create template');
           console.error(err);
@@ -47,8 +79,10 @@ export default function TemplateDesigner() {
       }
     };
     
-    createTemplate();
-  }, [id, navigate, templateName]);
+    if (!isLoading) {
+      createTemplate();
+    }
+  }, [id, navigate, templateName, isLoading]);
 
   // Load template details if ID is provided
   useEffect(() => {
@@ -93,9 +127,18 @@ export default function TemplateDesigner() {
   };
 
   const handleDragStart = (type: string) => (e: React.DragEvent) => {
-    e.dataTransfer.setData('text/plain', ''); // Required for Firefox
+    e.dataTransfer.setData('componentType', type); // Store data for Firefox support
     setDraggedComponent(type);
+    console.log(`Started dragging: ${type}`);
   };
+
+  const handleDragEnd = () => {
+    setDraggedComponent(null);
+  };
+
+  if (isLoading) {
+    return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
+  }
 
   return (
     <div className="min-h-screen flex flex-col">
@@ -142,6 +185,7 @@ export default function TemplateDesigner() {
                     className="cursor-move hover:bg-accent transition-colors"
                     draggable
                     onDragStart={handleDragStart('text')}
+                    onDragEnd={handleDragEnd}
                   >
                     <CardContent className="p-3 flex items-center">
                       <Type className="h-5 w-5 mr-3 text-brand-600" />
@@ -153,6 +197,7 @@ export default function TemplateDesigner() {
                     className="cursor-move hover:bg-accent transition-colors"
                     draggable
                     onDragStart={handleDragStart('image')}
+                    onDragEnd={handleDragEnd}
                   >
                     <CardContent className="p-3 flex items-center">
                       <Image className="h-5 w-5 mr-3 text-brand-600" />
@@ -164,6 +209,7 @@ export default function TemplateDesigner() {
                     className="cursor-move hover:bg-accent transition-colors"
                     draggable
                     onDragStart={handleDragStart('shape')}
+                    onDragEnd={handleDragEnd}
                   >
                     <CardContent className="p-3 flex items-center">
                       <Square className="h-5 w-5 mr-3 text-brand-600" />
@@ -175,6 +221,7 @@ export default function TemplateDesigner() {
                     className="cursor-move hover:bg-accent transition-colors"
                     draggable
                     onDragStart={handleDragStart('variable')}
+                    onDragEnd={handleDragEnd}
                   >
                     <CardContent className="p-3 flex items-center">
                       <Variable className="h-5 w-5 mr-3 text-brand-600" />
@@ -186,6 +233,7 @@ export default function TemplateDesigner() {
                     className="cursor-move hover:bg-accent transition-colors"
                     draggable
                     onDragStart={handleDragStart('qrcode')}
+                    onDragEnd={handleDragEnd}
                   >
                     <CardContent className="p-3 flex items-center">
                       <QrCode className="h-5 w-5 mr-3 text-brand-600" />
@@ -211,7 +259,7 @@ export default function TemplateDesigner() {
           
           <div className="flex-1 flex flex-col">
             <div className="flex-1 overflow-hidden">
-              <DesignerCanvas templateId={templateId} />
+              <DesignerCanvas templateId={templateId} draggedComponent={draggedComponent} />
             </div>
           </div>
           

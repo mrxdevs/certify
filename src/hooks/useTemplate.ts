@@ -47,13 +47,15 @@ export function useTemplate(templateId?: string) {
 
   const addComponent = async (component: Omit<CertificateComponent, 'id'> & { template_id: string }) => {
     try {
+      const { type, content, properties, template_id } = component;
+      
       const { data, error } = await supabase
         .from('template_components')
         .insert([{
-          type: component.type,
-          content: component.content || '',
-          properties: component.properties,
-          template_id: component.template_id
+          type,
+          content: content || '',
+          properties,
+          template_id
         }])
         .select()
         .single();
@@ -69,6 +71,7 @@ export function useTemplate(templateId?: string) {
       };
       
       setComponents(prev => [...prev, newComponent]);
+      toast.success('Component added');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to add component';
       setError(errorMessage);
@@ -96,6 +99,7 @@ export function useTemplate(templateId?: string) {
       };
       
       setComponents(prev => prev.map(c => c.id === id ? updatedComponent : c));
+      toast.success('Component updated');
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to update component';
       setError(errorMessage);

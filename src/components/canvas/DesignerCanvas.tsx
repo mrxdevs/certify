@@ -9,13 +9,19 @@ interface DesignerCanvasProps {
   height?: number;
   className?: string;
   templateId?: string;
+  draggedComponent?: string | null;
 }
 
-export function DesignerCanvas({ width = 800, height = 600, className, templateId }: DesignerCanvasProps) {
+export function DesignerCanvas({ 
+  width = 800, 
+  height = 600, 
+  className, 
+  templateId,
+  draggedComponent 
+}: DesignerCanvasProps) {
   const canvasRef = useRef<HTMLDivElement>(null);
   const [scale, setScale] = useState(1);
   const { components, addComponent, updateComponent, error, isLoading } = useTemplate(templateId);
-  const [draggedComponent, setDraggedComponent] = useState<string | null>(null);
 
   useEffect(() => {
     if (error) {
@@ -32,7 +38,10 @@ export function DesignerCanvas({ width = 800, height = 600, className, templateI
     e.preventDefault();
     e.stopPropagation();
 
-    if (!draggedComponent || !templateId) return;
+    if (!draggedComponent || !templateId) {
+      toast.error("Cannot add component: missing component type or template ID");
+      return;
+    }
 
     const canvasRect = canvasRef.current?.getBoundingClientRect();
     if (!canvasRect) return;
@@ -40,8 +49,10 @@ export function DesignerCanvas({ width = 800, height = 600, className, templateI
     const x = (e.clientX - canvasRect.left) / scale;
     const y = (e.clientY - canvasRect.top) / scale;
 
+    console.log(`Adding component: ${draggedComponent} at x:${x}, y:${y} to template ${templateId}`);
+
     addComponent({
-      type: draggedComponent as any,
+      type: draggedComponent as "text" | "image" | "shape" | "qrcode" | "variable",
       content: '',
       template_id: templateId,
       properties: {
@@ -53,8 +64,11 @@ export function DesignerCanvas({ width = 800, height = 600, className, templateI
         zIndex: components?.length || 0
       }
     });
+  };
 
-    setDraggedComponent(null);
+  const handleComponentDrag = (componentId: string) => (e: React.DragEvent) => {
+    e.stopPropagation();
+    // Implement component dragging within the canvas
   };
 
   return (
@@ -82,7 +96,7 @@ export function DesignerCanvas({ width = 800, height = 600, className, templateI
           {components?.map((component) => (
             <div
               key={component.id}
-              className="absolute border border-transparent hover:border-brand-500"
+              className="absolute border border-transparent hover:border-brand-500 cursor-move"
               style={{
                 left: component.properties.x,
                 top: component.properties.y,
@@ -91,6 +105,8 @@ export function DesignerCanvas({ width = 800, height = 600, className, templateI
                 transform: `rotate(${component.properties.rotation}deg)`,
                 zIndex: component.properties.zIndex,
               }}
+              draggable
+              onDragStart={handleComponentDrag(component.id)}
             >
               {component.content || component.type}
             </div>
