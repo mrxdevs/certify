@@ -1,19 +1,23 @@
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Navigation } from "@/components/Navigation";
-import { Footer } from "@/components/Footer";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { DesignerCanvas } from "@/components/canvas/DesignerCanvas";
+import { ComponentEditor } from "@/components/canvas/ComponentEditor";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Save, Image, Type, Square, QrCode, Variable, Layers, Download } from "lucide-react";
+import { Save, Image, Type, Square, QrCode, Variable, Layers, Download, FileText } from "lucide-react";
 import { Separator } from "@/components/ui/separator";
 import { supabase } from "@/integrations/supabase/client";
 import { useNavigate, useParams } from "react-router-dom";
 import { toast } from "sonner";
+import { CertificateComponent } from "@/lib/types";
+import { useTemplate } from "@/hooks/useTemplate";
+import { jsPDF } from "jspdf";
+import { fabric } from "fabric";
 
 export default function TemplateDesigner() {
   const { id } = useParams();
@@ -23,6 +27,9 @@ export default function TemplateDesigner() {
   const [draggedComponent, setDraggedComponent] = useState<string | null>(null);
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [selectedComponent, setSelectedComponent] = useState<CertificateComponent | null>(null);
+  const { components, updateComponent } = useTemplate(templateId);
+  const canvasRef = useRef<fabric.Canvas | null>(null);
 
   // Check authentication status
   useEffect(() => {
@@ -31,10 +38,9 @@ export default function TemplateDesigner() {
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        // Redirect to login page or display authentication message
+        // Redirect to login page if not authenticated
         toast.error("Please log in to create templates");
-        // Note: In a real app, you would redirect to a login page
-        // For now we'll show a warning but continue to allow functionality
+        navigate("/auth", { state: { from: location } });
       } else {
         setIsAuthenticated(true);
       }
@@ -46,6 +52,9 @@ export default function TemplateDesigner() {
     // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        if (event === 'SIGNED_OUT') {
+          navigate("/auth");
+        }
         setIsAuthenticated(!!session);
       }
     );
@@ -56,7 +65,7 @@ export default function TemplateDesigner() {
   // Create a new template if no ID is provided
   useEffect(() => {
     const createTemplate = async () => {
-      if (!id) {
+      if (!id && isAuthenticated) {
         try {
           const { data, error } = await supabase
             .from('certificate_templates')
@@ -82,7 +91,7 @@ export default function TemplateDesigner() {
     if (!isLoading) {
       createTemplate();
     }
-  }, [id, navigate, templateName, isLoading]);
+  }, [id, navigate, templateName, isLoading, isAuthenticated]);
 
   // Load template details if ID is provided
   useEffect(() => {
@@ -136,6 +145,176 @@ export default function TemplateDesigner() {
     setDraggedComponent(null);
   };
 
+  const handleExportPDF = async () => {
+    if (!templateId) {
+      toast.error("Template ID is missing");
+      return;
+    }
+    
+    try {
+      // Create a new PDF document
+      const pdf = new jsPDF({
+        orientation: "portrait",
+        unit: "px",
+        format: [800, 600]
+      });
+      
+      // Create a temporary canvas element
+      const tempCanvas = document.createElement('canvas');
+      tempCanvas.width = 800;
+      tempCanvas.height = 600;
+      const tempContext = tempCanvas.getContext('2d');
+      
+      if (!tempContext) {
+        toast.error("Failed to create PDF context");
+        return;
+      }
+      
+      // Create a new Fabric Canvas
+      const fabricCanvas = new fabric.Canvas(tempCanvas);
+      fabricCanvas.backgroundColor = 'white';
+      
+      // Add all components to the canvas
+      const loadComponentsPromise = new Promise<void>((resolve) => {
+        let loadedComponents = 0;
+        const totalComponents = components?.length || 0;
+        
+        // If no components, resolve immediately
+        if (totalComponents === 0) {
+          resolve();
+          return;
+        }
+        
+        components?.forEach(component => {
+          let obj;
+          
+          switch (component.type) {
+            case 'text':
+              obj = new fabric.Textbox(component.content || 'Text', {
+                left: component.properties.x,
+                top: component.properties.y,
+                width: component.properties.width,
+                fontSize: component.properties.fontSize || 20,
+                fill: component.properties.color || 'black',
+                fontFamily: component.properties.fontFamily || 'Arial',
+              });
+              fabricCanvas.add(obj);
+              loadedComponents++;
+              if (loadedComponents === totalComponents) resolve();
+              break;
+              
+            case 'image':
+              if (component.content) {
+                fabric.Image.fromURL(component.content, (img) => {
+                  img.set({
+                    left: component.properties.x,
+                    top: component.properties.y,
+                    scaleX: component.properties.width / img.width!,
+                    scaleY: component.properties.height / img.height!,
+                    angle: component.properties.rotation || 0,
+                  });
+                  fabricCanvas.add(img);
+                  loadedComponents++;
+                  if (loadedComponents === totalComponents) resolve();
+                });
+              } else {
+                obj = new fabric.Rect({
+                  left: component.properties.x,
+                  top: component.properties.y,
+                  width: component.properties.width,
+                  height: component.properties.height,
+                  fill: '#f0f0f0',
+                });
+                fabricCanvas.add(obj);
+                loadedComponents++;
+                if (loadedComponents === totalComponents) resolve();
+              }
+              break;
+              
+            case 'shape':
+              obj = new fabric.Rect({
+                left: component.properties.x,
+                top: component.properties.y,
+                width: component.properties.width,
+                height: component.properties.height,
+                fill: component.properties.color || '#e0e0e0',
+                stroke: component.properties.borderColor || '#c0c0c0',
+                strokeWidth: component.properties.borderWidth || 1,
+                rx: component.properties.borderRadius || 0,
+                ry: component.properties.borderRadius || 0,
+                angle: component.properties.rotation || 0,
+              });
+              fabricCanvas.add(obj);
+              loadedComponents++;
+              if (loadedComponents === totalComponents) resolve();
+              break;
+              
+            case 'qrcode':
+              obj = new fabric.Rect({
+                left: component.properties.x,
+                top: component.properties.y,
+                width: component.properties.width,
+                height: component.properties.height,
+                fill: '#f0f0f0',
+              });
+              fabricCanvas.add(obj);
+              
+              const qrLabel = new fabric.Text('QR Code', {
+                left: component.properties.x + component.properties.width / 2,
+                top: component.properties.y + component.properties.height / 2,
+                fontSize: 14,
+                originX: 'center',
+                originY: 'center',
+                fill: '#666'
+              });
+              fabricCanvas.add(qrLabel);
+              
+              loadedComponents++;
+              if (loadedComponents === totalComponents) resolve();
+              break;
+              
+            case 'variable':
+              obj = new fabric.Textbox(component.content || '{{Variable}}', {
+                left: component.properties.x,
+                top: component.properties.y,
+                width: component.properties.width,
+                fontSize: component.properties.fontSize || 20,
+                fill: '#0066cc',
+                fontStyle: 'italic',
+              });
+              fabricCanvas.add(obj);
+              loadedComponents++;
+              if (loadedComponents === totalComponents) resolve();
+              break;
+              
+            default:
+              loadedComponents++;
+              if (loadedComponents === totalComponents) resolve();
+          }
+        });
+      });
+      
+      // Wait for all components to load
+      await loadComponentsPromise;
+      
+      // Render the canvas to PDF
+      const imgData = fabricCanvas.toDataURL({
+        format: 'png',
+        quality: 1.0
+      });
+      
+      pdf.addImage(imgData, 'PNG', 0, 0, 800, 600);
+      
+      // Save PDF file
+      pdf.save(`${templateName.replace(/\s+/g, '-')}.pdf`);
+      
+      toast.success('Template exported as PDF');
+    } catch (error) {
+      console.error('Failed to export PDF', error);
+      toast.error('Failed to export PDF');
+    }
+  };
+
   if (isLoading) {
     return <div className="flex items-center justify-center min-h-screen">Loading...</div>;
   }
@@ -157,9 +336,9 @@ export default function TemplateDesigner() {
               <p className="text-sm text-muted-foreground">Certificate Template</p>
             </div>
             <div className="flex gap-2">
-              <Button variant="outline">
+              <Button variant="outline" onClick={handleExportPDF}>
                 <Download className="mr-2 h-4 w-4" />
-                Export
+                Export as PDF
               </Button>
               <Button onClick={handleUpdateTemplateName}>
                 <Save className="mr-2 h-4 w-4" />
@@ -250,16 +429,44 @@ export default function TemplateDesigner() {
                     <Layers className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="text-sm text-center py-8 text-muted-foreground">
-                  No components added yet
-                </div>
+                {components && components.length > 0 ? (
+                  <div className="space-y-1">
+                    {components.map((component) => (
+                      <div 
+                        key={component.id} 
+                        className={`p-2 text-sm rounded-md cursor-pointer flex items-center justify-between ${selectedComponent?.id === component.id ? 'bg-accent text-accent-foreground' : 'hover:bg-muted'}`}
+                        onClick={() => setSelectedComponent(component)}
+                      >
+                        <div className="flex items-center">
+                          {component.type === 'text' && <Type className="h-4 w-4 mr-2" />}
+                          {component.type === 'image' && <Image className="h-4 w-4 mr-2" />}
+                          {component.type === 'shape' && <Square className="h-4 w-4 mr-2" />}
+                          {component.type === 'qrcode' && <QrCode className="h-4 w-4 mr-2" />}
+                          {component.type === 'variable' && <Variable className="h-4 w-4 mr-2" />}
+                          <span>{component.content || component.type}</span>
+                        </div>
+                        <span className="text-xs text-muted-foreground">
+                          {component.properties.zIndex}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="text-sm text-center py-8 text-muted-foreground">
+                    No components added yet
+                  </div>
+                )}
               </TabsContent>
             </Tabs>
           </div>
           
           <div className="flex-1 flex flex-col">
             <div className="flex-1 overflow-hidden">
-              <DesignerCanvas templateId={templateId} draggedComponent={draggedComponent} />
+              <DesignerCanvas 
+                templateId={templateId} 
+                draggedComponent={draggedComponent}
+                onSelectComponent={setSelectedComponent} 
+              />
             </div>
           </div>
           
@@ -267,9 +474,10 @@ export default function TemplateDesigner() {
             <h3 className="font-medium mb-4">Properties</h3>
             <Separator className="mb-4" />
             
-            <div className="text-sm text-center py-8 text-muted-foreground">
-              Select a component to edit its properties
-            </div>
+            <ComponentEditor 
+              component={selectedComponent}
+              onUpdate={updateComponent}
+            />
           </div>
         </div>
       </main>
