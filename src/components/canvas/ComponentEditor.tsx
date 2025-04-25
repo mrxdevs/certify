@@ -19,13 +19,26 @@ interface ComponentEditorProps {
 
 export function ComponentEditor({ component, onUpdate }: ComponentEditorProps) {
   const [content, setContent] = useState<string>("");
-  const [properties, setProperties] = useState<CertificateComponent['properties'] | {}>({});
+  const [properties, setProperties] = useState<CertificateComponent['properties']>({
+    x: 0,
+    y: 0,
+    width: 100,
+    height: 100,
+    rotation: 0,
+    zIndex: 0,
+    fontSize: 20,
+    color: "#000000",
+    fontFamily: "Arial",
+    borderColor: "#c0c0c0",
+    borderWidth: 1,
+    borderRadius: 0,
+  });
   const [uploadingImage, setUploadingImage] = useState(false);
   
   useEffect(() => {
     if (component) {
       setContent(component.content || "");
-      setProperties({ ...component.properties });
+      setProperties({ ...properties, ...component.properties });
     }
   }, [component]);
   
