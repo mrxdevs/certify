@@ -1,4 +1,3 @@
-
 import { useRef, useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
 import { useTemplate } from "@/hooks/useTemplate";
@@ -52,7 +51,7 @@ export function DesignerCanvas({
     canvas.on('selection:created', (e) => {
       const activeObj = canvas.getActiveObject();
       if (activeObj && activeObj.data) {
-        onSelectComponent?.(activeObj.data);
+        onSelectComponent?.(activeObj.data as CertificateComponent);
       }
     });
     
@@ -192,12 +191,12 @@ export function DesignerCanvas({
     fabricCanvas.renderAll();
   }, [components, fabricCanvas]);
   
-  const handleDragOver = (e: React.DragEvent) => {
+  function handleDragOver(e: React.DragEvent) {
     e.preventDefault();
     e.stopPropagation();
-  };
+  }
   
-  const handleDrop = (e: React.DragEvent) => {
+  function handleDrop(e: React.DragEvent) {
     e.preventDefault();
     e.stopPropagation();
     
@@ -252,7 +251,7 @@ export function DesignerCanvas({
         borderWidth: 1,
       }
     });
-  };
+  }
 
   return (
     <div className="overflow-auto h-full flex items-center justify-center bg-gray-100 p-4">

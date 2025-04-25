@@ -4,6 +4,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { CertificateComponent } from '@/lib/types';
 import { toast } from 'sonner';
 
+interface AddComponentParams {
+  type: CertificateComponent['type'];
+  content?: string;
+  template_id: string;
+  properties: CertificateComponent['properties'];
+}
+
 export function useTemplate(templateId?: string) {
   const [components, setComponents] = useState<CertificateComponent[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -29,6 +36,7 @@ export function useTemplate(templateId?: string) {
           id: item.id,
           type: item.type as CertificateComponent['type'],
           content: item.content || '',
+          template_id: item.template_id,
           properties: item.properties as CertificateComponent['properties']
         })) || [];
         
@@ -45,7 +53,7 @@ export function useTemplate(templateId?: string) {
     loadTemplate();
   }, [templateId]);
 
-  const addComponent = async (component: Omit<CertificateComponent, 'id'> & { template_id: string }) => {
+  const addComponent = async (component: AddComponentParams) => {
     try {
       const { type, content, properties, template_id } = component;
       
@@ -67,6 +75,7 @@ export function useTemplate(templateId?: string) {
         id: data.id,
         type: data.type as CertificateComponent['type'],
         content: data.content || '',
+        template_id: data.template_id,
         properties: data.properties as CertificateComponent['properties']
       };
       
@@ -95,6 +104,7 @@ export function useTemplate(templateId?: string) {
         id: data.id,
         type: data.type as CertificateComponent['type'],
         content: data.content || '',
+        template_id: data.template_id,
         properties: data.properties as CertificateComponent['properties']
       };
       

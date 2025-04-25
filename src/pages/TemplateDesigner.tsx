@@ -1,4 +1,3 @@
-
 import { useState, useEffect, useRef } from "react";
 import { Navigation } from "@/components/Navigation";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -31,14 +30,12 @@ export default function TemplateDesigner() {
   const { components, updateComponent } = useTemplate(templateId);
   const canvasRef = useRef<fabric.Canvas | null>(null);
 
-  // Check authentication status
   useEffect(() => {
     const checkSession = async () => {
       setIsLoading(true);
       const { data: { session } } = await supabase.auth.getSession();
       
       if (!session) {
-        // Redirect to login page if not authenticated
         toast.error("Please log in to create templates");
         navigate("/auth", { state: { from: location } });
       } else {
@@ -49,7 +46,6 @@ export default function TemplateDesigner() {
 
     checkSession();
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       (event, session) => {
         if (event === 'SIGNED_OUT') {
@@ -62,7 +58,6 @@ export default function TemplateDesigner() {
     return () => subscription.unsubscribe();
   }, [navigate]);
 
-  // Create a new template if no ID is provided
   useEffect(() => {
     const createTemplate = async () => {
       if (!id && isAuthenticated) {
@@ -78,7 +73,6 @@ export default function TemplateDesigner() {
           if (error) throw error;
           
           setTemplateId(data.id);
-          // Update URL without reloading the page
           navigate(`/designer/${data.id}`, { replace: true });
           toast.success("Template created successfully");
         } catch (err) {
@@ -93,7 +87,6 @@ export default function TemplateDesigner() {
     }
   }, [id, navigate, templateName, isLoading, isAuthenticated]);
 
-  // Load template details if ID is provided
   useEffect(() => {
     if (id) {
       const loadTemplateDetails = async () => {
@@ -136,7 +129,7 @@ export default function TemplateDesigner() {
   };
 
   const handleDragStart = (type: string) => (e: React.DragEvent) => {
-    e.dataTransfer.setData('componentType', type); // Store data for Firefox support
+    e.dataTransfer.setData('componentType', type);
     setDraggedComponent(type);
     console.log(`Started dragging: ${type}`);
   };
@@ -152,14 +145,12 @@ export default function TemplateDesigner() {
     }
     
     try {
-      // Create a new PDF document
       const pdf = new jsPDF({
         orientation: "portrait",
         unit: "px",
         format: [800, 600]
       });
       
-      // Create a temporary canvas element
       const tempCanvas = document.createElement('canvas');
       tempCanvas.width = 800;
       tempCanvas.height = 600;
@@ -170,16 +161,13 @@ export default function TemplateDesigner() {
         return;
       }
       
-      // Create a new Fabric Canvas
       const fabricCanvas = new fabric.Canvas(tempCanvas);
       fabricCanvas.backgroundColor = 'white';
       
-      // Add all components to the canvas
       const loadComponentsPromise = new Promise<void>((resolve) => {
         let loadedComponents = 0;
         const totalComponents = components?.length || 0;
         
-        // If no components, resolve immediately
         if (totalComponents === 0) {
           resolve();
           return;
@@ -294,10 +282,8 @@ export default function TemplateDesigner() {
         });
       });
       
-      // Wait for all components to load
       await loadComponentsPromise;
       
-      // Render the canvas to PDF
       const imgData = fabricCanvas.toDataURL({
         format: 'png',
         quality: 1.0
@@ -305,7 +291,6 @@ export default function TemplateDesigner() {
       
       pdf.addImage(imgData, 'PNG', 0, 0, 800, 600);
       
-      // Save PDF file
       pdf.save(`${templateName.replace(/\s+/g, '-')}.pdf`);
       
       toast.success('Template exported as PDF');

@@ -15,6 +15,7 @@ import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
 import { jsPDF } from "jspdf";
 import { fabric } from "fabric";
+import { CertificateComponent } from "@/lib/types";
 
 interface Template {
   id: string;
@@ -27,6 +28,28 @@ interface FormValues {
   courseTitle: string;
   issueDate: string;
   [key: string]: string;
+}
+
+interface ComponentFromDatabase {
+  id: string;
+  type: 'text' | 'image' | 'shape' | 'qrcode' | 'variable';
+  content?: string;
+  template_id: string;
+  properties: {
+    x: number;
+    y: number;
+    width: number;
+    height: number;
+    rotation: number;
+    zIndex: number;
+    fontSize?: number;
+    color?: string;
+    fontFamily?: string;
+    borderColor?: string;
+    borderWidth?: number;
+    borderRadius?: number;
+    [key: string]: any;
+  };
 }
 
 export default function CertificateGenerator() {
@@ -89,17 +112,26 @@ export default function CertificateGenerator() {
       setGeneratingPdf(true);
       
       // Load template components
-      const { data: components, error } = await supabase
+      const { data: componentsData, error } = await supabase
         .from('template_components')
         .select('*')
         .eq('template_id', selectedTemplate);
         
       if (error) throw error;
       
-      if (!components || components.length === 0) {
+      if (!componentsData || componentsData.length === 0) {
         toast.error('Template has no components');
         return;
       }
+
+      // Type-safe components mapping
+      const components = componentsData.map(item => ({
+        id: item.id,
+        type: item.type as CertificateComponent['type'],
+        content: item.content || '',
+        template_id: item.template_id,
+        properties: item.properties as CertificateComponent['properties']
+      }));
       
       // Create a PDF
       const pdf = new jsPDF({

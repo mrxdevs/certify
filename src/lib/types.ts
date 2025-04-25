@@ -12,6 +12,7 @@ export interface CertificateComponent {
   id: string;
   type: 'text' | 'image' | 'shape' | 'qrcode' | 'variable';
   content?: string;
+  template_id?: string;
   properties: {
     x: number;
     y: number;
@@ -19,6 +20,12 @@ export interface CertificateComponent {
     height: number;
     rotation: number;
     zIndex: number;
+    fontSize?: number;
+    color?: string;
+    fontFamily?: string;
+    borderColor?: string;
+    borderWidth?: number;
+    borderRadius?: number;
     [key: string]: any;
   };
 }

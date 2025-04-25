@@ -19,7 +19,7 @@ interface ComponentEditorProps {
 
 export function ComponentEditor({ component, onUpdate }: ComponentEditorProps) {
   const [content, setContent] = useState<string>("");
-  const [properties, setProperties] = useState<Record<string, any>>({});
+  const [properties, setProperties] = useState<CertificateComponent['properties'] | {}>({});
   const [uploadingImage, setUploadingImage] = useState(false);
   
   useEffect(() => {
@@ -34,7 +34,7 @@ export function ComponentEditor({ component, onUpdate }: ComponentEditorProps) {
     
     if (component) {
       onUpdate(component.id, {
-        properties: { ...properties, [key]: value }
+        properties: { ...properties, [key]: value } as CertificateComponent['properties']
       });
     }
   };
@@ -65,7 +65,7 @@ export function ComponentEditor({ component, onUpdate }: ComponentEditorProps) {
       }
       
       // Upload the file
-      const filePath = `template-${component.template_id}/${Date.now()}-${file.name}`;
+      const filePath = `template-${component.template_id || 'unknown'}/${Date.now()}-${file.name}`;
       const { data, error } = await supabase.storage
         .from('certificates')
         .upload(filePath, file);
